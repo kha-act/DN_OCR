@@ -48,7 +48,6 @@ for file in os.listdir(folder):
         )
         table_mask = cv2.add(horizontal, vertical)
         contours, hierachy = cv2.findContours(table_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        print("Contours:", len(contours))
         img_color = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
         for cnt in contours:
             x, y, w, h = cv2.boundingRect(cnt)
@@ -60,6 +59,7 @@ for file in os.listdir(folder):
         table_rows = []
         debug_folder = "debug"
         os.makedirs(debug_folder, exist_ok=True)
+        print("Contours:", len(contours))
 
         for i,(x, y, w, h) in enumerate(cells):
 
