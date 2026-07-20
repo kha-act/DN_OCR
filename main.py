@@ -24,9 +24,6 @@ for file in os.listdir(folder):
             cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
         )
 
-        cv2.imwrite(
-            "debug_01_thresh.png", thresh )
-
         close_kernel = cv2.getStructuringElement(
             cv2.MORPH_RECT,
             (15, 1)
@@ -39,12 +36,12 @@ for file in os.listdir(folder):
         )
         horizontal_kernel = cv2.getStructuringElement(
             cv2.MORPH_RECT,
-            (50, 1)
+            (img.shape[1] // 20, 1)
         )
 
         vertical_kernel = cv2.getStructuringElement(
             cv2.MORPH_RECT,
-            (1, 50)
+            (1, img.shape[0] // 20)
         )
 
         horizontal = cv2.morphologyEx(
@@ -52,50 +49,57 @@ for file in os.listdir(folder):
             cv2.MORPH_OPEN,
             horizontal_kernel
         )
-        cv2.imwrite(
-            "debug_02_horizontal.png", horizontal)
         vertical = cv2.morphologyEx(
-            thresh,
+            closed,
             cv2.MORPH_OPEN,
             vertical_kernel
         )
-        cv2.imwrite(
-            "debug_03_vertical.png", thresh)
         table_mask = cv2.add(horizontal, vertical)
         contours, hierarchy = cv2.findContours(table_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        print("Contours:", len(contours))
-        img_color = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        valid_contours = []
 
         for i, cnt in enumerate(contours):
+
+            parent = hierarchy[0][i][3]
+
+            if parent != -1:
+                valid_contours.append(cnt)
+
+        print("Cell contours:", len(valid_contours))
+        #convert color
+        img_color = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        debug_img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+
+
+
+        for i, cnt in enumerate(valid_contours):
             cv2.drawContours(
-                img_color,
+                debug_img,
                 [cnt],
                 -1,
                 (255, 0, 0),
                 2
             )
 
-        cv2.imwrite("all_contours.png", img_color)
         img_h, img_w = img_color.shape[:2]
         for i, cnt in enumerate(contours):
             x, y, w, h = cv2.boundingRect(cnt)
 
-            if w > img_h *0.02 and h> img_w * 0.01:
-                cv2.rectangle(img_color, (x, y), (x + w, y + h), (255, 0, 0), 2)
+            if w > img_w *0.05 and h> img_h * 0.05:
+                cv2.rectangle(debug_img, (x, y), (x + w, y + h), (255, 0, 0), 2)
                 cells.append((x, y, w, h))
             cv2.putText(
-                img_color,
+                debug_img,
                 str(i),
                 (x,y),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.5, (255, 0, 0), 1
+                0.5, (255, 0, 0),
+                1
             )
-        cv2.imwrite("all_cells.png", img_color)
         cells.sort(key=lambda c: (c[1], c[0]))
         table_rows = []
         debug_folder = "debug"
         os.makedirs(debug_folder, exist_ok=True)
-        print("Contours:", len(contours))
 
         for i,(x, y, w, h) in enumerate(cells[:250]):
             pad = 3
@@ -104,15 +108,11 @@ for file in os.listdir(folder):
                 max(0, y + pad):min(img.shape[0], y + h - pad),
                 max(0, x + pad):min(img.shape[1], x + w - pad)
             ]
-            cv2.imwrite(f'{debug_folder}/{i}.png', crop)
+            cv2.imwrite(os.path.join(debug_folder,f"{file}_crop_{i}.png"), crop)
         #
         #     if crop.size == 0:
         #         continue
-        #
-        #     crop_bgr = cv2.cvtColor(
-        #         crop,
-        #         cv2.COLOR_GRAY2BGR
-        #     )
+
         #     if i < 2000:
         #         cv2.imwrite(
         #             os.path.join(
@@ -122,24 +122,24 @@ for file in os.listdir(folder):
         #             crop
         #         )
         #
-        #     result = ocr.predict(crop_bgr)
+        #     result = ocr.predict(crop)
         #
         #     text = ""
         #
         #     if result and result[0]["rec_texts"]:
-        #         text = result[0]["rec_texts"][0]
+        #         text = "".join(result[0]["rec_texts"]
         #
         #     found = False
-        #
+        #     call_center_y = y+h//2
         #     for row in table_rows:
-        #         if abs(row["y"] - y) < 10:
+        #         if abs(row["y"] - call_center -y) < 10:
         #             row["cells"].append((x, text))
         #             found = True
         #             break
         #
         #     if not found:
         #         table_rows.append({
-        #             "y": y,
+        #             "y": call_center_y,
         #             "cells": [(x, text)]
         #         })
         #
@@ -168,7 +168,7 @@ for file in os.listdir(folder):
         #     os.path.join(debug_folder, f"{file}_table_mask.png"),
         #     table_mask
         # )
-
+        #
         # df.to_csv(
         #     csv_name,
         #     index=False,
