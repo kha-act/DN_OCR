@@ -109,72 +109,51 @@ for file in os.listdir(folder):
                 max(0, x + pad):min(img.shape[1], x + w - pad)
             ]
             cv2.imwrite(os.path.join(debug_folder,f"{file}_crop_{i}.png"), crop)
-        #
-        #     if crop.size == 0:
-        #         continue
+            result = ocr.predict(crop)
 
-        #     if i < 2000:
-        #         cv2.imwrite(
-        #             os.path.join(
-        #                 debug_folder,
-        #                 f"{file}_crop_{i}.png"
-        #             ),
-        #             crop
-        #         )
-        #
-        #     result = ocr.predict(crop)
-        #
-        #     text = ""
-        #
-        #     if result and result[0]["rec_texts"]:
-        #         text = "".join(result[0]["rec_texts"]
-        #
-        #     found = False
-        #     call_center_y = y+h//2
-        #     for row in table_rows:
-        #         if abs(row["y"] - call_center -y) < 10:
-        #             row["cells"].append((x, text))
-        #             found = True
-        #             break
-        #
-        #     if not found:
-        #         table_rows.append({
-        #             "y": call_center_y,
-        #             "cells": [(x, text)]
-        #         })
-        #
-        # final_table = []
-        #
-        # for row in table_rows:
-        #     ordered = sorted(
-        #         row["cells"],
-        #         key=lambda v: v[0]
-        #     )
-        #
-        #     final_table.append(
-        #         [text for _, text in ordered]
-        #     )
-        #
-        # table_rows.sort(key=lambda r: r["y"])
-        #
-        # df = pd.DataFrame(final_table)
-        #
-        # csv_name = os.path.splitext(file)[0] + ".csv"
-        # cv2.imwrite(
-        #     os.path.join(debug_folder, f"{file}_cells.png"),
-        #     img_color
-        # )
-        # cv2.imwrite(
-        #     os.path.join(debug_folder, f"{file}_table_mask.png"),
-        #     table_mask
-        # )
-        #
-        # df.to_csv(
-        #     csv_name,
-        #     index=False,
-        #     header=False,
-        #     encoding="utf-8-sig"
-        # )
+            text = ""
+
+            if result and result[0]["rec_texts"]:
+                text = "".join(result[0]["rec_texts"])
+
+            found = False
+            call_center_y = y+h//2
+            for row in table_rows:
+                if abs(row["y"] - call_center_y) < 10:
+                    row["cells"].append((x, text))
+                    found = True
+                    break
+
+            if not found:
+                table_rows.append({
+                    "y": call_center_y,
+                    "cells": [(x, text)]
+                })
+
+        final_table = []
+
+        for row in table_rows:
+            ordered = sorted(
+                row["cells"],
+                key=lambda v: v[0]
+            )
+
+            final_table.append(
+                [f";{text}" for _, text in ordered]
+            )
+
+        table_rows.sort(key=lambda r: r["y"])
+
+        df = pd.DataFrame(final_table)
+
+        csv_name = os.path.splitext(file)[0] + ".csv"
+
+        df.to_csv(
+            csv_name,
+            index=False,
+            header=False,
+            encoding="utf-8-sig"
+        )
 
 
 
